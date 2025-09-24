@@ -128,6 +128,7 @@ int32_t pin_pulldown(pin_num_t pin, bool enable)
 int32_t pin_input(pin_num_t pin, bool enable)
 {
 	uint32_t reg = IO_MUX_REG(pin);
+	// Sets if enable bool is set and dosent if not
 	if (enable) 
 	{
 		REG_SET_BIT(reg, FUN_IE);
@@ -147,7 +148,7 @@ int32_t pin_output(pin_num_t pin, bool enable)
 {
 	if (enable)
 	{
-		if (pin < REG_BITS)
+		if (pin < REG_BITS) //check to see if pin is less then 32 and sets the right eneble regester
 		{
 			REG_SET_BIT(GPIO_ENABLE_REG, 1 << pin);
 		}
@@ -158,13 +159,13 @@ int32_t pin_output(pin_num_t pin, bool enable)
 	}
 	else
 	{
-		if(pin < REG_BITS)
+		if(pin < REG_BITS) // Does the same as above but clears the right regester 
 		{
-			REG_CLR_BIT(GPIO_ENABLE_REG, 1 << pin);
+			REG_CLR_BIT(GPIO_ENABLE_REG, (1 << pin));
 		}
 		else
 		{
-			REG_CLR_BIT(GPIO_ENABLE1_REG, 1 << (pin - REG_BITS));
+			REG_CLR_BIT(GPIO_ENABLE1_REG, (1 << (pin - REG_BITS)));
 		}
 	}
 	
@@ -176,7 +177,7 @@ int32_t pin_output(pin_num_t pin, bool enable)
 // Return zero if successful, or non-zero otherwise.
 int32_t pin_odrain(pin_num_t pin, bool enable)
 {
-	if (enable) {
+	if (enable) {  //makes sure that the pin in moved by the right ammount 
         REG_SET_BIT(GPIO_PIN_REG(pin), (1 << PAD_DRIVER));
     } else {
         REG_CLR_BIT(GPIO_PIN_REG(pin), (1 << PAD_DRIVER));
@@ -188,7 +189,7 @@ int32_t pin_odrain(pin_num_t pin, bool enable)
 // Return zero if successful, or non-zero otherwise.
 int32_t pin_set_level(pin_num_t pin, int32_t level)
 {
-	 if (pin < 32) {
+	 if (pin < PIN_BITS) {
         if (level) {
             REG(GPIO_OUT_W1TS_REG) = (1u << pin);  // set high
         } else {
@@ -196,7 +197,7 @@ int32_t pin_set_level(pin_num_t pin, int32_t level)
         }
     } else {
         // pins 32–39 use the second output register bank
-        uint32_t bit = 1u << (pin - 32);
+        uint32_t bit = 1u << (pin - REG_BITS);
         if (level) {
             REG(GPIO_OUT1_W1TS_REG) = bit;
         } else {
@@ -225,7 +226,7 @@ uint64_t pin_get_in_reg(void)
 	uint32_t low = REG(GPIO_IN_REG);
 	uint32_t high = REG(GPIO_IN1_REG);
 
-    return ((uint64_t)high << 32) | (uint64_t)low;
+    return ((uint64_t)high << REG_BITS) | (uint64_t)low;
 }
 
 // Get the value of the output registers, one pin per bit.
@@ -236,7 +237,7 @@ uint64_t pin_get_out_reg(void)
     uint32_t high = REG(GPIO_OUT1_REG);  // GPIO 32–39 (lower 8 bits valid)
 
     // Concatenate: upper bank shifted left by 32 bits
-    return ((uint64_t)high << 32) | (uint64_t)low;
+    return ((uint64_t)high << REG_BITS) | (uint64_t)low;
 
 	// TODO: Read the OUT and OUT1 registers, return the concatenated values
 }
