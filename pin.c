@@ -29,11 +29,13 @@
 #define IO_MUX_REG(n)				(DR_REG_IO_MUX_BASE + PIN_MUX_REG_OFFSET[(n)]) // TODO: Finish this macro
 
 // TODO: IO MUX Register Fields - FUN_WPD, FUN_WPU, ...
-#define FUN_WPD  7
+#define FUN_WPD_S  7
+#define FUN_WPD      (1 << FUN_WPD_S)
 #define MCU_SEL_S 12
 #define FUN_DRV_S 10
 #define FUN_WPU_S 8
-#define FUN_IE 9
+#define FUN_IE_S 9
+#define FUN_IE       (1 << FUN_IE_S)
 #define MCU_SEL(v)   (((v) & 0x3) << MCU_SEL_S)   
 #define FUN_DRV(v)   (((v) & 0x3) << FUN_DRV_S)  
 #define FUN_WPU      (1 << FUN_WPU_S)   
@@ -44,13 +46,14 @@
 // TODO: Finish these macros. HINT: Use the REG() macro.
 #define REG_SET_BIT(r,b) (REG(r) |= (uint32_t)(b))
 #define REG_CLR_BIT(r,b) (REG(r) &= ~(uint32_t)(b))
-#define REG_GET_BIT(r,b) (REG(r) & (uint32_a)(b))
+#define REG_GET_BIT(r,b) (REG(r) & (uint32_t)(b))
 
 
 //extra nubmers
 #define PIN_RESET_FUN_OUT 0x100
 #define FIRST_REG 1
 #define SECOND_REG 2
+#define RESET_MUX_REG 0x3
 
 // Gives byte offset of IO_MUX Configuration Register
 // from base address DR_REG_IO_MUX_BASE
@@ -69,19 +72,18 @@ static const uint8_t PIN_MUX_REG_OFFSET[] = {
 int32_t pin_reset(pin_num_t pin)
 {
 	if (rtc_gpio_is_valid_gpio(pin)) { // hand-off work to RTC subsystem
-		rtc_gpio_deinit(pin);
+			rtc_gpio_deinit(pin);
 		rtc_gpio_pullup_en(pin);
 		rtc_gpio_pulldown_dis(pin);
-	}
-    // 1. Reset GPIO_PINn_REG: all fields to zero
+	}    // 1. Reset GPIO_PINn_REG: all fields to zero
     REG(GPIO_PIN_REG(pin)) = 0;
 
     // 2. Reset GPIO_FUNCn_OUT_SEL_CFG_REG: set GPIO_FUNCn_OUT_SEL = 0x100
     REG(GPIO_FUNC_OUT_SEL_CFG(pin)) = PIN_RESET_FUN_OUT;
 
-    // 3. Reset IO_MUX_x_REG: MCU_SEL=2, FUN_DRV=2, FUN_WPU=1
-    REG(IO_MUX_REG(pin)) = MCU_SEL(2) | FUN_DRV(2) | FUN_WPU | (1 << FUN_IE);
-	// Now that the pin is reset, set the output level to zero
+	//REG_CLR_BIT(IO_MUX_REG(pin), (RESET_MUX_REG << MCU_SEL_S) | (RESET_MUX_REG << FUN_DRV_S) | (1 << FUN_WPU_S) | (1 << FUN_IE));
+	REG_SET_BIT(IO_MUX_REG(pin), MCU_SEL(2) | FUN_DRV(2) | FUN_WPU | (FUN_IE));
+		// Now that the pin is reset, set the output level to zero
 	return pin_set_level(pin, 0);
 }
 
@@ -95,10 +97,10 @@ int32_t pin_pullup(pin_num_t pin, bool enable)
 	}
 	// Set the bit specifiied by pin and chagnes fun_wpu
 	if (enable) {
-		REG_SET_BIT(IO_MUX_REG(pin), (1 << FUN_WPU_S));
+		REG_SET_BIT(IO_MUX_REG(pin), (FUN_WPU));
 	}
 	else {
-		REG_CLR_BIT(IO_MUX_REG(pin), (1 << FUN_WPU_S));
+		REG_CLR_BIT(IO_MUX_REG(pin), (FUN_WPU));
 	}
 	return 0;
 }
@@ -115,10 +117,10 @@ int32_t pin_pulldown(pin_num_t pin, bool enable)
 	// Set the bit specifiied by pin and chagnes fun_wpd
 
 	if (enable) {
-		REG_SET_BIT(IO_MUX_REG(pin), (1 << FUN_WPD));
+		REG_SET_BIT(IO_MUX_REG(pin), (FUN_WPD));
 	}
 	else {
-		REG_CLR_BIT(IO_MUX_REG(pin), (1 << FUN_WPD));
+		REG_CLR_BIT(IO_MUX_REG(pin), (FUN_WPD));
 	}
 	return 0;
 }
@@ -189,7 +191,7 @@ int32_t pin_odrain(pin_num_t pin, bool enable)
 // Return zero if successful, or non-zero otherwise.
 int32_t pin_set_level(pin_num_t pin, int32_t level)
 {
-	 if (pin < PIN_BITS) {
+	 if (pin < REG_BITS ) {
         if (level) {
             REG(GPIO_OUT_W1TS_REG) = (1u << pin);  // set high
         } else {
