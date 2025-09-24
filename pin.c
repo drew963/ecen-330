@@ -81,7 +81,7 @@ int32_t pin_reset(pin_num_t pin)
     // 2. Reset GPIO_FUNCn_OUT_SEL_CFG_REG: set GPIO_FUNCn_OUT_SEL = 0x100
     REG(GPIO_FUNC_OUT_SEL_CFG(pin)) = PIN_RESET_FUN_OUT;
 
-	//REG_CLR_BIT(IO_MUX_REG(pin), (RESET_MUX_REG << MCU_SEL_S) | (RESET_MUX_REG << FUN_DRV_S) | (1 << FUN_WPU_S) | (1 << FUN_IE));
+	REG_CLR_BIT(IO_MUX_REG(pin), FUN_WPD);
 	REG_SET_BIT(IO_MUX_REG(pin), MCU_SEL(2) | FUN_DRV(2) | FUN_WPU | (FUN_IE));
 		// Now that the pin is reset, set the output level to zero
 	return pin_set_level(pin, 0);
@@ -120,7 +120,7 @@ int32_t pin_pulldown(pin_num_t pin, bool enable)
 		REG_SET_BIT(IO_MUX_REG(pin), (FUN_WPD));
 	}
 	else {
-		REG_CLR_BIT(IO_MUX_REG(pin), (FUN_WPD));
+			REG_CLR_BIT(IO_MUX_REG(pin), (FUN_WPD));
 	}
 	return 0;
 }
